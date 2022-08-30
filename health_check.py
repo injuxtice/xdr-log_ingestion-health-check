@@ -14,79 +14,49 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-keyID = "REPLACE WITH API KEY ID"
-keyValue = "REPLACE WITH API KEY VALUE"
-tenantURL = "REPLACE WITH TENANTNAME.XDR.REGION.PALOALTONETWORKS.COM" # e.g. test.xdr.uk.paloaltonetworks.com
+keyID = "keyid"
+keyValue = "keyvalue"
+tenantURL = "tenantURL.xdr.uk.paloaltonetworks.com"
+input_query = "dataset = panw_ngfw_traffic_raw"
 
-def initiate_query(api_key_id, api_key, query=""):
-    if query == "":
-        query = "dataset = panw_ngfw_traffic_raw"
-    logging.info(f"Creating query: {query} on customer {tenantURL}")
+def api_call(called_parameters, input_query, api_url):
     nonce = "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(64)])
     timestamp = int(datetime.now(timezone.utc).timestamp()) * 1000
-    auth_key = "%s%s%s" % (api_key, nonce, timestamp)
+    auth_key = "%s%s%s" % (keyValue, nonce, timestamp)
     auth_key = auth_key.encode("utf-8")
     api_key_hash = hashlib.sha256(auth_key).hexdigest()
     headers = {
         "x-xdr-timestamp": str(timestamp),
         "x-xdr-nonce": nonce,
-        "x-xdr-auth-id": str(api_key_id),
+        "x-xdr-auth-id": str(keyID),
         "Authorization": api_key_hash,
         "Content-Type": "application/json"
     }
     parameters = {
         "request_data": {
-            "query": query
+            input_query: called_parameters
         }
     }
-    res = requests.post(url="https://api-"+tenantURL+"/public_api/v1/xql/start_xql_query/",
-						headers=headers,
-						json=parameters)
-    if res.status_code == 200:
-        return res.json(), query
-    return "error getting incidents", query
-
-def get_query(api_key_id, api_key, query_id):
-    logging.info(f"Checking output of query ID : {query_id}")
-    nonce = "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(64)])
-    timestamp = int(datetime.now(timezone.utc).timestamp()) * 1000
-    auth_key = "%s%s%s" % (api_key, nonce, timestamp)
-    auth_key = auth_key.encode("utf-8")
-    api_key_hash = hashlib.sha256(auth_key).hexdigest()
-    headers = {
-        "x-xdr-timestamp": str(timestamp),
-        "x-xdr-nonce": nonce,
-        "x-xdr-auth-id": str(api_key_id),
-        "Authorization": api_key_hash,
-        "Content-Type": "application/json"
-    }
-    parameters = {
-        "request_data": {
-            "query_id": query_id
-        }
-    }
-    res = requests.post(url="https://api-"+tenantURL+"/public_api/v1/xql/get_query_results/",
+    res = requests.post(url=f"https://api-{tenantURL}/public_api/v1/xql/{api_url}",
 						headers=headers,
 						json=parameters)
     if res.status_code == 200:
         return res.json()
-    return res.text
-
-
+    return "error getting incidents", called_parameters
 
 while True:
-    rawJson, query = initiate_query(keyID, keyValue, "dataset = check_point_vpn_1_firewall_1_raw") # replace dataset = with desired dataset to monitor
+    rawJson = api_call(input_query, "query", "start_xql_query") # replace dataset = with desired dataset to monitor
     qryId = rawJson.get('reply')
+    logging.info(f"Got query ID: {qryId}")
     max_wait = 60
     state = False
     for interval in range(10, max_wait, 10):
         sleep(interval)
-        outputQuery = get_query(keyID, keyValue, qryId)
-        if "status" in outputQuery.get("reply"):
-            logging.info(f"Query status: {outputQuery['reply']['status']}")
-            if outputQuery["reply"]['status'] == "SUCCESS":
-                state = True
-                break
+        outputQuery = api_call(qryId, "query_id", "get_query_results")
+        logging.info(f"Query status: {outputQuery['reply']['status']}")
+        if outputQuery["reply"]['status'] == "SUCCESS":
+            state = True
+            break
 
     if not state:
         logging.error("Query took too long")
@@ -96,6 +66,6 @@ while True:
     if numResults != 0:
         logging.info(f"Success, got number of results :  {numResults}")
     else:
-        logging.error(f"Logging failed for query! {query} , number of results found: {numResults}")
+        logging.error(f"Logging failed for query! , number of results found: {numResults}")
     logging.info("Sleeping for 2 days")
     sleep(172800)
