@@ -72,9 +72,10 @@ def get_query(api_key_id, api_key, query_id):
         return res.json()
     return res.text
 
-rawJson, query = initiate_query(keyID, keyValue, "dataset = check_point_vpn_1_firewall_1_raw") # replace dataset = with desired dataset to monitor
+
 
 while True:
+    rawJson, query = initiate_query(keyID, keyValue, "dataset = check_point_vpn_1_firewall_1_raw") # replace dataset = with desired dataset to monitor
     qryId = rawJson.get('reply')
     max_wait = 60
     state = False
