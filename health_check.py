@@ -14,10 +14,19 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-keyID = "keyid"
-keyValue = "keyvalue"
-tenantURL = "tenantURL.xdr.uk.paloaltonetworks.com"
-input_query = "dataset = panw_ngfw_traffic_raw"
+import argparse
+
+parser = argparse.ArgumentParser(description="XDR health check script")
+parser.add_argument("-key", "--keyvalue", help="API key value", required=True, type=str)
+parser.add_argument("-keyid", help="API key ID", required=True, type=str)
+parser.add_argument("-tenant", help="Tenant URL", required=True, type=str)
+parser.add_argument("-query", help="Query to run", required=True, type=str)
+
+
+keyID = parser.parse_args().keyid
+keyValue = parser.parse_args().keyvalue
+tenantURL = parser.parse_args().tenant
+input_query = parser.parse_args().query
 
 def api_call(called_parameters, input_query, api_url):
     nonce = "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(64)])
