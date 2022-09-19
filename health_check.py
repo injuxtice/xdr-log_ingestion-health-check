@@ -17,10 +17,10 @@ root.addHandler(handler)
 import argparse
 
 parser = argparse.ArgumentParser(description="XDR health check script")
-parser.add_argument("-key", "--keyvalue", help="API key value", required=True, type=str)
+parser.add_argument("-key", help="API key value", required=True, type=str)
 parser.add_argument("-keyid", help="API key ID", required=True, type=str)
 parser.add_argument("-tenant", help="Tenant URL", required=True, type=str)
-parser.add_argument("-query", help="Query to run", required=True, type=str)
+parser.add_argument("-query", help="Query to run in quotes, default is 'dataset = panw_ngfw_traffic_raw'", required=True, type=str, default="dataset = panw_ngfw_traffic_raw")
 
 
 keyID = parser.parse_args().keyid
@@ -53,28 +53,29 @@ def api_call(called_parameters, input_query, api_url):
         return res.json()
     return "error getting incidents", called_parameters
 
-while True:
-    rawJson = api_call(input_query, "query", "start_xql_query") # replace dataset = with desired dataset to monitor
-    qryId = rawJson.get('reply')
-    logging.info(f"Got query ID: {qryId}")
-    max_wait = 60
-    state = False
-    for interval in range(10, max_wait, 10):
-        sleep(interval)
-        outputQuery = api_call(qryId, "query_id", "get_query_results")
-        logging.info(f"Query status: {outputQuery['reply']['status']}")
-        if outputQuery["reply"]['status'] == "SUCCESS":
-            state = True
-            break
+if __name__ == "__main__":
+    while True:
+        rawJson = api_call(input_query, "query", "start_xql_query") # replace dataset = with desired dataset to monitor
+        qryId = rawJson.get('reply')
+        logging.info(f"Got query ID: {qryId}")
+        max_wait = 60
+        state = False
+        for interval in range(10, max_wait, 10):
+            sleep(interval)
+            outputQuery = api_call(qryId, "query_id", "get_query_results")
+            logging.info(f"Query status: {outputQuery['reply']['status']}")
+            if outputQuery["reply"]['status'] == "SUCCESS":
+                state = True
+                break
 
-    if not state:
-        logging.error("Query took too long")
-        exit(0)
+        if not state:
+            logging.error("Query took too long")
+            exit(0)
 
-    numResults = outputQuery['reply']['number_of_results']
-    if numResults != 0:
-        logging.info(f"Success, got number of results :  {numResults}")
-    else:
-        logging.error(f"Logging failed for query! , number of results found: {numResults}")
-    logging.info("Sleeping for 2 days")
-    sleep(172800)
+        numResults = outputQuery['reply']['number_of_results']
+        if numResults != 0:
+            logging.info(f"Success, got number of results :  {numResults}")
+        else:
+            logging.error(f"Logging failed for query! , number of results found: {numResults}")
+        logging.info("Sleeping for 2 days")
+        sleep(172800)
