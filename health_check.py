@@ -24,7 +24,7 @@ parser.add_argument("-query", help="Query to run in quotes, default is 'dataset 
 
 
 keyID = parser.parse_args().keyid
-keyValue = parser.parse_args().keyvalue
+keyValue = parser.parse_args().key
 tenantURL = parser.parse_args().tenant
 input_query = parser.parse_args().query
 
